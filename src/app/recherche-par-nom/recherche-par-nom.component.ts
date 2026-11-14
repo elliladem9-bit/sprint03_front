@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Vol } from '../model/vol.model';
 import { VolService } from '../services/vol.service';
@@ -12,11 +12,15 @@ import { SearchFilterPipe } from '../pipes/search-filter.pipe';
   templateUrl: './recherche-par-nom.component.html',
 })
 export class RechercheParNomComponent implements OnInit {
-  vols!: Vol[];
+  vols: Vol[] = [];
   searchTerm = '';
   private volService = inject(VolService);
+  private cdr = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
-    this.vols = this.volService.listeVols();
+    this.volService.listeVols().subscribe((vs) => {
+      this.vols = vs;
+      this.cdr.markForCheck();
+    });
   }
 }

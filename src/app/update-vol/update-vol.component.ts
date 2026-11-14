@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -13,25 +13,31 @@ import { VolService } from '../services/vol.service';
 })
 export class UpdateVolComponent implements OnInit {
   currentVol = new Vol();
-  types: TypeVol[];
-  updatedIdType = 1;
+  types: TypeVol[] = [];
+  updatedIdType!: number;
   private activatedRoute = inject(ActivatedRoute);
   private volService = inject(VolService);
+  private cdr = inject(ChangeDetectorRef);
   private router = inject(Router);
 
-  constructor() {
-    this.types = this.volService.listeTypes();
-  }
-
   ngOnInit() {
+    this.volService.listeTypes().subscribe((res) => {
+      this.types = res._embedded.types;
+      this.cdr.markForCheck();
+    });
+
     const id = Number(this.activatedRoute.snapshot.params['id']);
-    this.currentVol = this.volService.consulterVol(id);
-    this.updatedIdType = this.currentVol.type.idType;
+    this.volService.consulterVol(id).subscribe((v) => {
+      this.currentVol = v;
+      this.updatedIdType = v.type.idType;
+      this.cdr.markForCheck();
+    });
   }
 
   updateVol() {
-    this.currentVol.type = this.volService.consulterType(this.updatedIdType);
-    this.volService.updateVol(this.currentVol);
-    this.router.navigate(['vols']);
+    this.currentVol.type = this.types.find((t) => t.idType == this.updatedIdType)!;
+    this.volService.updateVol(this.currentVol).subscribe(() => {
+      this.router.navigate(['vols']);
+    });
   }
 }

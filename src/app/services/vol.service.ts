@@ -1,100 +1,68 @@
-import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { Vol } from '../model/vol.model';
 import { TypeVol } from '../model/type-vol.model';
+import { TypeVolWrapper } from '../model/type-vol-wrapper.model';
 
 @Injectable({ providedIn: 'root' })
 export class VolService {
-  types: TypeVol[];
-  vols: Vol[];
+  // api REST Spring Boot (@RestController) pour les vols
+  apiURL: string = 'http://localhost:8090/vols/api';
+  // api Spring Data REST pour les types de vol
+  apiURLType: string = 'http://localhost:8090/vols/types';
 
-  constructor() {
-    this.types = [
-      { idType: 1, nomType: 'Vol direct', descriptionType: 'Sans escale' },
-      { idType: 2, nomType: 'Vol avec escale', descriptionType: 'Une ou plusieurs escales' },
-    ];
-    this.vols = [
-      { idVol: 1, numeroVol: 'TU 714', compagnie: 'Tunisair', destination: 'Paris',
-        prixBillet: 850, dateDepart: new Date('2026-11-10'), type: this.types[0] },
-      { idVol: 2, numeroVol: 'TU 332', compagnie: 'Tunisair', destination: 'Istanbul',
-        prixBillet: 720, dateDepart: new Date('2026-11-18'), type: this.types[1] },
-      { idVol: 3, numeroVol: 'NO 512', compagnie: 'Nouvelair', destination: 'Rome',
-        prixBillet: 640, dateDepart: new Date('2026-12-02'), type: this.types[0] },
-    ];
+  private http = inject(HttpClient);
+
+  // ---------- Vols ----------
+  listeVols(): Observable<Vol[]> {
+    return this.http.get<Vol[]>(this.apiURL);
   }
 
-  listeVols(): Vol[] {
-    return this.vols;
+  ajouterVol(vol: Vol): Observable<Vol> {
+    return this.http.post<Vol>(this.apiURL, vol);
   }
 
-  listeTypes(): TypeVol[] {
-    return this.types;
+  supprimerVol(id: number) {
+    return this.http.delete(this.apiURL + '/' + id);
+  }
+
+  consulterVol(id: number): Observable<Vol> {
+    return this.http.get<Vol>(this.apiURL + '/' + id);
+  }
+
+  updateVol(vol: Vol): Observable<Vol> {
+    return this.http.put<Vol>(this.apiURL, vol);
   }
 
   // Recherche par type de vol
   rechercherParType(idType: number): Observable<Vol[]> {
-    return of(this.vols.filter((v) => v.type.idType == idType));
+    return this.http.get<Vol[]>(this.apiURL + '/voltype/' + idType);
   }
 
-  // Recherche par nom (destination)
+  // Recherche par destination
   rechercherParNom(nom: string): Observable<Vol[]> {
-    return of(this.vols.filter((v) => v.destination.toLowerCase().includes(nom.toLowerCase())));
+    return this.http.get<Vol[]>(this.apiURL + '/volsByDestination/' + nom);
   }
 
-  consulterType(id: number): TypeVol {
-    return this.types.find((t) => t.idType == id)!;
+  // ---------- Types de vol (Spring Data REST) ----------
+  listeTypes(): Observable<TypeVolWrapper> {
+    return this.http.get<TypeVolWrapper>(this.apiURLType);
   }
 
-  // ---------- CRUD sur les types de vol (tableau JSON, sans API) ----------
-  ajouterType(type: TypeVol) {
-    // id généré automatiquement
-    type.idType = Math.max(0, ...this.types.map((t) => t.idType)) + 1;
-    this.types.push(type);
+  ajouterType(type: TypeVol): Observable<TypeVol> {
+    // l'id est généré par MySQL : on envoie seulement nom + description
+    return this.http.post<TypeVol>(this.apiURLType, {
+      nomType: type.nomType,
+      descriptionType: type.descriptionType,
+    });
   }
 
-  supprimerType(type: TypeVol) {
-    const index = this.types.findIndex((t) => t.idType === type.idType);
-    if (index > -1) {
-      this.types.splice(index, 1);
-    }
+  updateType(type: TypeVol): Observable<TypeVol> {
+    return this.http.put<TypeVol>(this.apiURLType + '/' + type.idType, type);
   }
 
-  updateType(type: TypeVol) {
-    const index = this.types.findIndex((t) => t.idType === type.idType);
-    if (index > -1) {
-      this.types[index] = type;
-      // garder la cohérence : les vols qui pointent vers l'ancien objet
-      this.vols.forEach((v) => {
-        if (v.type.idType === type.idType) {
-          v.type = type;
-        }
-      });
-    }
-  }
-
-  ajouterVol(vol: Vol) {
-    // si aucun id n'est saisi, on en génère un automatiquement
-    if (!vol.idVol) {
-      vol.idVol = Math.max(0, ...this.vols.map((v) => v.idVol)) + 1;
-    }
-    this.vols.push(vol);
-  }
-
-  supprimerVol(vol: Vol) {
-    const index = this.vols.indexOf(vol, 0);
-    if (index > -1) {
-      this.vols.splice(index, 1);
-    }
-  }
-
-  consulterVol(id: number): Vol {
-    return this.vols.find((v) => v.idVol === id)!;
-  }
-
-  updateVol(v: Vol) {
-    const index = this.vols.findIndex((x) => x.idVol === v.idVol);
-    if (index > -1) {
-      this.vols[index] = v;
-    }
+  supprimerType(id: number) {
+    return this.http.delete(this.apiURLType + '/' + id);
   }
 }

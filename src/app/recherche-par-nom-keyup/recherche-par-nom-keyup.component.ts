@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Vol } from '../model/vol.model';
 import { VolService } from '../services/vol.service';
@@ -14,10 +14,14 @@ export class RechercheParNomKeyupComponent implements OnInit {
   vols: Vol[] = [];
   allVols: Vol[] = [];
   private volService = inject(VolService);
+  private cdr = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
-    this.allVols = this.volService.listeVols();
-    this.vols = this.allVols;
+    this.volService.listeVols().subscribe((vs) => {
+      this.allVols = vs;
+      this.vols = vs;
+      this.cdr.markForCheck();
+    });
   }
 
   onKeyUp(filterText: string) {

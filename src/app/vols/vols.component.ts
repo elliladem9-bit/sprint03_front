@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Vol } from '../model/vol.model';
@@ -10,19 +10,29 @@ import { Auth } from '../services/auth';
   imports: [DatePipe, RouterLink],
   templateUrl: './vols.component.html',
 })
-export class VolsComponent {
-  vols: Vol[];
+export class VolsComponent implements OnInit {
+  vols: Vol[] = [];
   private volService = inject(VolService);
+  private cdr = inject(ChangeDetectorRef);
   authService = inject(Auth);
 
-  constructor() {
-    this.vols = this.volService.listeVols();
+  ngOnInit(): void {
+    this.chargerVols();
+  }
+
+  chargerVols() {
+    this.volService.listeVols().subscribe((vs) => {
+      this.vols = vs;
+      this.cdr.markForCheck();
+    });
   }
 
   supprimerVol(v: Vol) {
     const conf = confirm('Êtes-vous sûr de vouloir supprimer ce vol ?');
     if (conf) {
-      this.volService.supprimerVol(v);
+      this.volService.supprimerVol(v.idVol).subscribe(() => {
+        this.chargerVols();
+      });
     }
   }
 }
